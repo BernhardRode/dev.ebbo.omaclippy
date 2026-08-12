@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "dev.ebbo.omaclippy",
+  "name": "Clippy",
+  "version": "1.0.0",
+  "author": "ebbo",
+  "license": "MIT",
+  "description": "The iconic, unsolicited desktop companion you never asked for is back—now fully integrated into your Omarchy environment.",
+  "kinds": [
+    "bar-widget",
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "panel": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Clippy",
+    "description": "Summon Clippy for an unsolicited tip.",
+    "category": "Fun",
+    "aliases": ["clippy"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "useAgentQuips": true,
+      "agentModel": "claude-haiku-4-5-20251001",
+      "agentTimeoutSec": 12
+    },
+    "schema": [
+      {
+        "key": "useAgentQuips",
+        "type": "boolean",
+        "label": "Generate quips with Claude Code",
+        "description": "When on, each tip is generated fresh by the local claude CLI. Falls back to the canned quip bank when it's slow, missing, or fails.",
+        "defaultValue": true
+      },
+      {
+        "key": "agentModel",
+        "type": "string",
+        "label": "Model for quip generation",
+        "description": "Passed as claude --model <value>.",
+        "defaultValue": "claude-haiku-4-5-20251001"
+      },
+      {
+        "key": "agentTimeoutSec",
+        "type": "integer",
+        "label": "Agent timeout (seconds)",
+        "min": 2,
+        "max": 30,
+        "step": 1,
+        "defaultValue": 12
+      }
+    ]
+  }
+}
