@@ -3,6 +3,7 @@ name: release-please
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,6 +14,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Creates or updates the "chore(main): release x.y.z" PR from conventional
+  # commits, and -- once that PR is merged -- cuts the git tag + GitHub
+  # Release and lands the version bump back on main.
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -21,3 +25,43 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Fully automatic releases: whenever a release PR is open, check out its
+  # head, run the test suite against it, and merge it. The merge push
+  # re-triggers this workflow, where release-please turns the merged PR
+  # into the tag + GitHub Release. A red test suite simply leaves the PR
+  # open for the next push to retry.
+  auto-merge-release-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [release-please]
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Test-drive and merge the open release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          prs=$(gh pr list --label "autorelease: pending" --state open --json number --jq '.[].number')
+          if [ -z "$prs" ]; then
+            echo "no open release PR -- nothing to merge"
+            exit 0
+          fi
+
+          for pr in $prs; do
+            echo "::group::Release PR #$pr"
+            gh pr checkout "$pr"
+
+            if ls tests/*.test.js >/dev/null 2>&1; then
+              for t in tests/*.test.js; do node "$t"; done
+            fi
+
+            # Merge may fail if main moved ahead mid-run (conflict); that's
+            # fine -- release-please regenerates the PR on the next push.
+            gh pr merge "$pr" --merge || echo "::warning::merge of #$pr failed; will retry on next push"
+            echo "::endgroup::"
+          done
