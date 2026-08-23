@@ -100,6 +100,31 @@ Item {
     NumberAnimation { target: root; property: "blinkProgress"; to: 0; duration: 150; easing.type: Easing.OutQuad }
   }
 
+  // Idle blinking: fires every few seconds with randomized spacing so it
+  // doesn't read as metronomic, plus a ~25% chance of a quick double blink
+  // (real people -- and presumably paperclips -- don't blink on a fixed
+  // schedule). One-shot timer restarted with a fresh interval each time,
+  // since a repeating Timer can't change its interval mid-flight.
+  Timer {
+    id: idleBlinkTimer
+    running: root.modelReady
+    repeat: false
+    interval: 3000
+    onTriggered: {
+      root.blink()
+      if (!doubleBlinkTimer.running && Math.random() < 0.25) doubleBlinkTimer.restart()
+      interval = 2600 + Math.random() * 3400
+      restart()
+    }
+  }
+  // Fires just after the first blink of a pair has fully reopened.
+  Timer {
+    id: doubleBlinkTimer
+    interval: 420
+    repeat: false
+    onTriggered: root.blink()
+  }
+
   // Kick the paper away, then a fresh one pops in. paperNode has no morph
   // targets any more than anything else here does (same RuntimeLoader-era
   // limitation noted at the top of the file, just via balsam's Model now
