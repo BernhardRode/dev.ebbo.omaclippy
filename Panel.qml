@@ -464,6 +464,20 @@ Item {
           top: root.maximized ? floatWindow.terminalDockTopMargin : floatWindow.floatY
         }
         color: "transparent"
+        // Input mask: the layer surface is a square, but Clippy is round-ish
+        // and centered. Without this the invisible corners swallow clicks
+        // meant for whatever is underneath; an inset ellipse over the model
+        // keeps drag/click/wheel working while everything else passes
+        // through the surface entirely (input region, not just ignored
+        // events). Inset so even the ellipse edge doesn't hover-capture air.
+        mask: Region {
+          readonly property real inset: 0.1
+          shape: RegionShape.Ellipse
+          x: floatWindow.width * inset
+          y: floatWindow.height * inset
+          width: floatWindow.width * (1 - 2 * inset)
+          height: floatWindow.height * (1 - 2 * inset)
+        }
         WlrLayershell.namespace: "io-rode-clippy"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
