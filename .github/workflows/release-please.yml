@@ -33,10 +33,28 @@ jobs:
 
       - name: Create or update the release PR / cut releases from main
         id: release-please
+        continue-on-error: true
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           # GITHUB_TOKEN is denied the releases API on this repo; a user
           # token with repo scope is not. Swap for a fine-grained PAT.
+          token: ${{ secrets.RELEASE_PAT }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # release-please's "create a release" call occasionally 404s
+      # transiently (GitHub API lag right after a tag/PR is created); a
+      # bare re-run of the same job always succeeds. Retry once in-run
+      # instead of requiring a manual re-trigger.
+      - name: Wait before retrying release-please
+        if: steps.release-please.outcome == 'failure'
+        run: sleep 15
+
+      - name: "Retry: create or update the release PR / cut releases from main"
+        id: release-please-retry
+        if: steps.release-please.outcome == 'failure'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
           token: ${{ secrets.RELEASE_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
@@ -83,11 +101,26 @@ jobs:
           git reset --hard origin/main
 
       - name: Cut the tag + GitHub release from merged main
+        id: release-please-cut
         if: steps.automerge.outputs.merged == 'true'
+        continue-on-error: true
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           # GITHUB_TOKEN is denied the releases API on this repo; a user
           # token with repo scope is not. Swap for a fine-grained PAT.
+          token: ${{ secrets.RELEASE_PAT }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # Same transient-404 workaround as above.
+      - name: Wait before retrying the release cut
+        if: steps.release-please-cut.outcome == 'failure'
+        run: sleep 15
+
+      - name: "Retry: cut the tag + GitHub release from merged main"
+        if: steps.release-please-cut.outcome == 'failure'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
           token: ${{ secrets.RELEASE_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
